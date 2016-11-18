@@ -1,13 +1,13 @@
 {
-  "name": "game-template",
+  "name": "lavaquest",
   "version": "0.0.0",
-  "description": "A starting point for making games on Exponent.",
-  "author": null,
+  "description": "a bad game",
+  "author": "Adam Perry <adam.n.perry@gmail.com>",
   "private": true,
   "main": "main.js",
   "dependencies": {
     "@exponent/vector-icons": "~2.0.3",
-    "exponent": "~11.0.2",
+    "exponent": "~11.0.3-rc.1",
     "pixi.js": "^4.1.1",
     "react": "~15.3.2",
     "react-native": "git+https://github.com/exponentjs/react-native#sdk-11.0.3",

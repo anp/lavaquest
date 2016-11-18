@@ -3,7 +3,6 @@ import React from 'react';
 import { Alert, PanResponder } from 'react-native';
 
 import Assets from './Assets';
-// import Game from './3DGame';
 import Game from './2DGame';
 
 
