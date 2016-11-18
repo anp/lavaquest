@@ -5,7 +5,6 @@ import { Alert, PanResponder } from 'react-native';
 import Assets from './Assets';
 import Game from './2DGame';
 
-
 //// App
 
 // This is the root component of the app. It does any loading required

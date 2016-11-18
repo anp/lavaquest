@@ -19,28 +19,9 @@ import Assets from '../Assets';
 // Render the game as a `View` component.
 
 export default (viewProps) => {
-  //// Camera
+  const { width, height } = Dimensions.get('window');
 
-  // An orthographic projection from 3d to 2d can be viewed as simply dropping
-  // one of the 3d dimensions (say 'Z'), after some rotation and scaling. The
-  // scaling here is specified by the width and height of the camera's view,
-  // which ends up defining the boundaries of the viewport through which the
-  // 2d world is visualized.
-  //
-  // Let `p`, `q` be two distinct points that are sent to the same point in 2d
-  // space. The direction of `p - q` (henceforth 'Z') then serves simply to
-  // specify depth (ordering of overlap) between the 2d elements of this world.
-  //
-  // The width of the view will be 4 world-space units. The height is set based
-  // on the phone screen's aspect ratio.
-  const width = 4;
-  const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
-  const height = (screenHeight / screenWidth) * width;
-  const camera = new THREE.OrthographicCamera(
-    -width / 2, width / 2,
-    height / 2, -height / 2,
-    1, 10000,
-  );
+  const camera = new THREE.PerspectiveCamera(80, 1, 1, 10000);
   camera.position.z = 1000;
 
 
@@ -56,7 +37,7 @@ export default (viewProps) => {
   // 1: Geometry
   // This defines the local shape of the object. In this case the geometry
   // will simply be a 1x1 plane facing the camera.
-  const geometry = new THREE.PlaneBufferGeometry(1, 1);
+  const playerGeometry = new THREE.BoxGeometry(200, 200, 200);
 
   // 2: Material
   // This defines how the surface of the shape is painted. In this case we
@@ -66,41 +47,104 @@ export default (viewProps) => {
   const texture = THREEView.textureFromAsset(Assets['player-sprite']);
   texture.minFilter = texture.magFilter = THREE.NearestFilter;
   texture.needsUpdate = true;
-  const material = new THREE.MeshBasicMaterial({
+  const playerMaterial = new THREE.MeshBasicMaterial({
     map: texture,
-    color: 0xff0000,    // Sprites can be tinted with a color.
+    color: 0x00ffff,    // Sprites can be tinted with a color.
     transparent: true,  // Use the image's alpha channel for alpha.
   });
+
+
 
   // 3: Mesh
   // A mesh is a node in THREE's scenegraph and refers to a geometry and a
   // material to draw itself. It can be translated and rotated as any other
   // scenegraph node.
-  const mesh = new THREE.Mesh(geometry, material);
-  scene.add(mesh);
+
+  const tunnelGeometry = new THREE.CylinderGeometry(500, 500, 2000, 32, 1, true);
+  const tunnelMaterial = new THREE.MeshLambertMaterial({color: 0x00fff0});
+  const tunnelMesh = new THREE.Mesh(tunnelGeometry, tunnelMaterial);
+
+  tunnelMesh.rotation.x = Math.PI / 2;
+
+  tunnelMesh.flipSided = true;
+  scene.add(tunnelMesh);
 
   // Geometries and materials can be reused.
-  const mesh2 = new THREE.Mesh(geometry, material);
-  mesh2.position.x = mesh2.position.y = 0.5;
-  mesh2.position.z = -40;     // This puts this sprite behind our previous one.
-  mesh2.rotation.z = Math.PI;
-  scene.add(mesh2);
+  const playerMesh = new THREE.Mesh(playerGeometry, playerMaterial);
+  playerMesh.position.z = 50;
+  playerMesh.rotation.z = Math.PI;
+  scene.add(playerMesh);
 
+  const playerLight = new THREE.SpotLight(0xffffff);
+  playerLight.power = 8;
+  playerLight.penumbra = 0.4;
+  playerLight.decay = 2;
+  playerLight.position.z = 50;
+  playerLight.castShadow = true;
+  playerLight.shadow.mapSize.width = 1024;
+  playerLight.shadow.mapSize.height = 1024;
+  playerLight.shadow.camera.near = 500;
+  playerLight.shadow.camera.far = 4000;
+  playerLight.shadow.camera.fov = 70;
+  scene.add(playerLight);
+
+  let goodBalls = new Array();
+  const badBalls = new Array();
+  let timeSinceGoodBall = 0;
+  let timeUntilGoodBall = 0.3;
+  let timeElapsed = 0;
+
+  const goodMaterial = new THREE.MeshLambertMaterial({color: 0xcc0000});
+  const sphereGeometry = new THREE.SphereGeometry(20, 32, 32);
 
   //// Events
 
   // This function is called every frame, with `dt` being the time in seconds
   // elapsed since the last call.
   const tick = (dt) => {
-    mesh.rotation.z += 2 * dt;
+    timeElapsed += dt;
+    timeSinceGoodBall += dt;
+
+    if (timeUntilGoodBall >= 0.001) {
+      timeUntilGoodBall -= 0.0003;
+    }
+
+    // add a new good ball at a random position
+    if (timeSinceGoodBall > timeUntilGoodBall) {
+      let newGoodBall = new THREE.Mesh(sphereGeometry, goodMaterial);
+      newGoodBall.position.x = ((Math.random() * width * 3) - ((width * 3) / 2));
+      newGoodBall.position.y = ((Math.random() * height * 3) - ((height * 3) / 2));
+      newGoodBall.position.z = -500;
+      goodBalls.push(newGoodBall);
+      scene.add(newGoodBall);
+      timeSinceGoodBall = 0;
+    }
+
+    const zTick = 15;
+    const ballsLeft = new Array();
+    for (let goodBall of goodBalls) {
+      goodBall.position.z += zTick;
+
+      if (goodBall.position.z <= (camera.position.z - 400)) {
+        ballsLeft.push(goodBall);
+      } else {
+        scene.remove(goodBall);
+      }
+    }
+    goodBalls = ballsLeft;
   }
 
   // These functions are called on touch and release of the view respectively.
   const touch = (_, gesture) => {
-    material.color.setHex(0x00ff00);
+    const newX = (gesture.x0 - (width / 2)) * 5;
+    const newY = -(gesture.y0 - (height/2)) * 5;
+    playerMesh.position.x = newX;
+    playerMesh.position.y = newY;
+    playerLight.position.x = newX;
+    playerLight.position.y = newY;
   };
   const release = (_, gesture) => {
-    material.color.setHex(0xff0000);
+    return;
   }
 
 
